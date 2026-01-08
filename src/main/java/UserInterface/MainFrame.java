@@ -7,6 +7,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.List;
 
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JFrame;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
@@ -43,6 +44,8 @@ public class MainFrame extends JFrame {
         mainPanel = new MainPanel();
         mainPanel.setParentFrame(this);
         add(mainPanel);
+
+        applyGlobalTheme();
 
         setVisible(true);
     }
@@ -277,6 +280,10 @@ public class MainFrame extends JFrame {
     private void createSettingsMenu(JMenuBar menuBar, int menuShortcutKeyMask) {
         JMenu settingsMenu = new JMenu("Settings");
 
+        JCheckBoxMenuItem darkModeItem = new JCheckBoxMenuItem("Dark Mode", ThemeManager.isDarkMode());
+        darkModeItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, menuShortcutKeyMask | InputEvent.SHIFT_DOWN_MASK));
+        darkModeItem.addActionListener(e -> setDarkMode(darkModeItem.isSelected()));
+
         JMenuItem testSettingsItem = new JMenuItem("Test Settings...");
         testSettingsItem.setAccelerator(KeyStroke.getKeyStroke(
             KeyEvent.VK_COMMA, menuShortcutKeyMask));  // ⌘, on Mac
@@ -286,6 +293,8 @@ public class MainFrame extends JFrame {
             }
         });
 
+        settingsMenu.add(darkModeItem);
+        settingsMenu.addSeparator();
         settingsMenu.add(testSettingsItem);
         menuBar.add(settingsMenu);
     }
@@ -304,6 +313,20 @@ public class MainFrame extends JFrame {
         helpMenu.addSeparator();
         helpMenu.add(aboutItem);
         menuBar.add(helpMenu);
+    }
+
+    private void setDarkMode(boolean enabled) {
+        ThemeManager.setDarkMode(enabled);
+        applyGlobalTheme();
+    }
+
+    private void applyGlobalTheme() {
+        ThemeManager.applyToUIManager();
+        SwingUtilities.updateComponentTreeUI(this);
+        if (mainPanel != null) {
+            mainPanel.applyTheme();
+        }
+        repaint();
     }
     
     private String getVersionFromManifest() {

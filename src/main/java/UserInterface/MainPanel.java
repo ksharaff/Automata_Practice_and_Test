@@ -3,6 +3,7 @@ package UserInterface;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -36,6 +37,8 @@ public class MainPanel extends JPanel {
     private MainFrame parentFrame;
 
     private JPanel objectPanel;
+    private JPanel centerPanel;
+    private JPanel welcomePanel;
     private AutomatonPanel currentActivePanel;
     
     // Tab system
@@ -46,6 +49,7 @@ public class MainPanel extends JPanel {
     
     // Split pane for resizable sidebar
     private JSplitPane mainSplitPane; 
+    private JLabel recentFilesLabel;
     
     // Preferences manager for persistent storage
     private static PreferencesManager preferencesManager = new PreferencesManager();
@@ -295,9 +299,7 @@ public class MainPanel extends JPanel {
         recentFilesPanel.removeAll();
         
         // Re-add header
-        JLabel recentFilesLabel = new JLabel("Recent Files");
-        recentFilesLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        recentFilesLabel.setForeground(new Color(64, 64, 64));
+        recentFilesLabel = createRecentFilesHeaderLabel();
         recentFilesPanel.add(recentFilesLabel);
         recentFilesPanel.add(Box.createVerticalStrut(10));
         
@@ -307,6 +309,55 @@ public class MainPanel extends JPanel {
         // Refresh UI
         refreshRecentFilesUI();
     }
+
+    private JLabel createRecentFilesHeaderLabel() {
+        JLabel label = new JLabel("Recent Files");
+        label.setFont(new Font("Arial", Font.BOLD, 16));
+        label.setForeground(ThemeManager.textPrimary());
+        return label;
+    }
+
+    public void applyTheme() {
+        Color panelBg = ThemeManager.panelBackground();
+        Color border = ThemeManager.borderColor();
+        setBackground(panelBg);
+        if (recentFilesPanel != null) {
+            recentFilesPanel.setBackground(panelBg);
+            recentFilesPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 0, 1, border),
+                BorderFactory.createEmptyBorder(20, 20, 20, 20)
+            ));
+        }
+        if (centerPanel != null) {
+            centerPanel.setBackground(panelBg);
+        }
+        if (objectPanel != null) {
+            objectPanel.setBackground(panelBg);
+        }
+        if (welcomePanel != null) {
+            applyThemeRecursive(welcomePanel);
+        }
+        if (recentFilesLabel != null) {
+            recentFilesLabel.setForeground(ThemeManager.textPrimary());
+        }
+        updateTabButtons();
+        revalidate();
+        repaint();
+    }
+
+    private void applyThemeRecursive(Component comp) {
+        if (comp instanceof JPanel) {
+            comp.setBackground(ThemeManager.panelBackground());
+        }
+        if (comp instanceof JLabel) {
+            ((JLabel) comp).setForeground(ThemeManager.textPrimary());
+        }
+        if (comp instanceof Container) {
+            for (Component child : ((Container) comp).getComponents()) {
+                applyThemeRecursive(child);
+            }
+        }
+    }
     
     /**
      * Creates the welcome panel with "New File" and "Open From Computer" buttons
@@ -314,27 +365,27 @@ public class MainPanel extends JPanel {
     private JPanel createWelcomePanel() {
         JPanel welcomePanel = new JPanel();
         welcomePanel.setLayout(new BorderLayout());
-        welcomePanel.setBackground(Color.WHITE);
+        welcomePanel.setBackground(ThemeManager.panelBackground());
         
         JPanel contentPanel = new JPanel();
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
-        contentPanel.setBackground(Color.WHITE);
+        contentPanel.setBackground(ThemeManager.panelBackground());
         
         JLabel titleLabel = new JLabel("Welcome to CS.410 Graph System");
         titleLabel.setFont(new Font("Arial", Font.BOLD, 28));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        titleLabel.setForeground(new Color(64, 64, 64));
+        titleLabel.setForeground(ThemeManager.textPrimary());
         titleLabel.setBorder(BorderFactory.createEmptyBorder(50, 0, 20, 0));
         
         JLabel subtitleLabel = new JLabel("Choose an option to get started");
         subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 18));
-        subtitleLabel.setForeground(new Color(128, 128, 128));
+        subtitleLabel.setForeground(ThemeManager.textSecondary());
         subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         subtitleLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
         
         JPanel buttonsPanel = new JPanel();
         buttonsPanel.setLayout(new BoxLayout(buttonsPanel, BoxLayout.Y_AXIS));
-        buttonsPanel.setBackground(Color.WHITE);
+        buttonsPanel.setBackground(ThemeManager.panelBackground());
         buttonsPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
         JButton newFileButton = createStyledButton("Create New File", Color.darkGray);
@@ -359,6 +410,7 @@ public class MainPanel extends JPanel {
     
     private JButton createStyledButton(String text, Color backgroundColor) {
         JButton button = new JButton(text);
+        backgroundColor = ThemeManager.accent(false);
         button.setFont(new Font("Arial", Font.BOLD, 14));
         button.setForeground(Color.WHITE);
         button.setBackground(backgroundColor);
@@ -373,12 +425,12 @@ public class MainPanel extends JPanel {
         button.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseEntered(java.awt.event.MouseEvent evt) {
-                button.setBackground(backgroundColor.darker());
+                button.setBackground(ThemeManager.accent(true));
             }
             
             @Override
             public void mouseExited(java.awt.event.MouseEvent evt) {
-                button.setBackground(backgroundColor);
+                button.setBackground(ThemeManager.accent(false));
             }
         });
         
@@ -421,7 +473,7 @@ public class MainPanel extends JPanel {
         this.fileManager = new FileManager();
         this.setLayout(new BorderLayout());
         this.setSize(900, 400); 
-        this.setBackground(new Color(250, 250, 250)); 
+        this.setBackground(ThemeManager.panelBackground()); 
 
         openTabs = new ArrayList<>();
         activeTabIndex = -1;
@@ -434,15 +486,15 @@ public class MainPanel extends JPanel {
         recentFilesPanel.setLayout(new BoxLayout(recentFilesPanel, BoxLayout.Y_AXIS));
         recentFilesPanel.setPreferredSize(new Dimension(200, 400));
         recentFilesPanel.setMinimumSize(new Dimension(150, 0));
-        recentFilesPanel.setBackground(Color.WHITE);
+        recentFilesPanel.setBackground(ThemeManager.panelBackground());
         recentFilesPanel.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(0, 0, 0, 1, new Color(220, 220, 220)),
+            BorderFactory.createMatteBorder(0, 0, 0, 1, ThemeManager.borderColor()),
             BorderFactory.createEmptyBorder(20, 20, 20, 20)
         ));
         
         // Create center panel with tab system and object panel
-        JPanel centerPanel = new JPanel(new BorderLayout());
-        centerPanel.setBackground(Color.WHITE);
+        centerPanel = new JPanel(new BorderLayout());
+        centerPanel.setBackground(ThemeManager.panelBackground());
         
         createTabPanel();
         centerPanel.add(tabPanel, BorderLayout.NORTH);
@@ -453,18 +505,16 @@ public class MainPanel extends JPanel {
          */
         objectPanel = new JPanel(); 
         objectPanel.setLayout(new BorderLayout());
-        objectPanel.setBackground(Color.WHITE);
+        objectPanel.setBackground(ThemeManager.panelBackground());
         objectPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
-        
-        JPanel welcomePanel = createWelcomePanel();
+
+        welcomePanel = createWelcomePanel();
         objectPanel.add(welcomePanel, BorderLayout.CENTER);
         
         centerPanel.add(objectPanel, BorderLayout.CENTER);
 
         // Recent Files header
-        JLabel recentFilesLabel = new JLabel("Recent Files");
-        recentFilesLabel.setFont(new Font("Arial", Font.BOLD, 16));
-        recentFilesLabel.setForeground(new Color(64, 64, 64));
+        recentFilesLabel = createRecentFilesHeaderLabel();
         recentFilesPanel.add(recentFilesLabel);
         recentFilesPanel.add(Box.createVerticalStrut(10));
 
@@ -482,6 +532,9 @@ public class MainPanel extends JPanel {
         mainSplitPane.setBorder(null); // Remove default border
         
         this.add(mainSplitPane, BorderLayout.CENTER);
+
+        ThemeManager.addListener(this::applyTheme);
+        applyTheme();
 
     }
     
@@ -559,6 +612,12 @@ public class MainPanel extends JPanel {
         }
         
         tabPanel.setVisible(true);
+        Color activeBg = ThemeManager.background();
+        Color inactiveBg = ThemeManager.panelBackground();
+        Color text = ThemeManager.textPrimary();
+        Color textSub = ThemeManager.textSecondary();
+        Color border = ThemeManager.borderColor();
+        Color hover = ThemeManager.accent(true);
         
         for (int i = 0; i < openTabs.size(); i++) {
             AutomatonTab tab = openTabs.get(i);
@@ -575,18 +634,18 @@ public class MainPanel extends JPanel {
             
             // Subtle tab styling
             if (i == activeTabIndex) {
-                tabButton.setBackground(Color.WHITE);
-                tabButton.setForeground(Color.BLACK);
+                tabButton.setBackground(activeBg);
+                tabButton.setForeground(text);
                 tabButton.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createMatteBorder(1, 1, 0, 1, new Color(180, 180, 180)),
+                    BorderFactory.createMatteBorder(1, 1, 0, 1, border),
                     BorderFactory.createEmptyBorder(4, 8, 4, 8)
                 ));
                 tabButton.setOpaque(true);
             } else {
-                tabButton.setBackground(new Color(245, 245, 245));
-                tabButton.setForeground(new Color(80, 80, 80));
+                tabButton.setBackground(inactiveBg);
+                tabButton.setForeground(textSub);
                 tabButton.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createMatteBorder(1, 1, 1, 1, new Color(220, 220, 220)),
+                    BorderFactory.createMatteBorder(1, 1, 1, 1, border),
                     BorderFactory.createEmptyBorder(4, 8, 4, 8)
                 ));
                 tabButton.setOpaque(true);
@@ -598,14 +657,14 @@ public class MainPanel extends JPanel {
                     @Override
                     public void mouseEntered(java.awt.event.MouseEvent evt) {
                         if (tabIndex != activeTabIndex) {
-                            tabButton.setBackground(new Color(235, 235, 235));
+                            tabButton.setBackground(hover);
                         }
                     }
                     
                     @Override
                     public void mouseExited(java.awt.event.MouseEvent evt) {
                         if (tabIndex != activeTabIndex) {
-                            tabButton.setBackground(new Color(245, 245, 245));
+                            tabButton.setBackground(inactiveBg);
                         }
                     }
                 });
@@ -616,7 +675,7 @@ public class MainPanel extends JPanel {
             // Enhanced close button
             JButton closeButton = new JButton("×");
             closeButton.setFont(new Font("Arial", Font.BOLD, 14));
-            closeButton.setForeground(new Color(120, 120, 120));
+            closeButton.setForeground(textSub);
             closeButton.setBorderPainted(false);
             closeButton.setFocusPainted(false);
             closeButton.setContentAreaFilled(false);
@@ -638,15 +697,15 @@ public class MainPanel extends JPanel {
                 
                 @Override
                 public void mouseExited(java.awt.event.MouseEvent evt) {
-                    closeButton.setForeground(new Color(120, 120, 120));
-                    closeButton.setContentAreaFilled(false);
+                    closeButton.setForeground(ThemeManager.accent(true));
+                    closeButton.setBackground(ThemeManager.background());
                     closeButton.setBorderPainted(false);
                 }
             });
             
             tabButtonPanel.add(tabButton, BorderLayout.CENTER);
             tabButtonPanel.add(closeButton, BorderLayout.EAST);
-            
+                    closeButton.setForeground(textSub);
             tabButtonsPanel.add(tabButtonPanel);
         }
         

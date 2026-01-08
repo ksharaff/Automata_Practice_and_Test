@@ -6,10 +6,13 @@ import java.awt.geom.AffineTransform;
 import java.io.*;
 import java.util.List;
 import javax.swing.*;
+import javax.swing.border.TitledBorder;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.undo.UndoManager;
+import javax.swing.text.JTextComponent;
 import common.Automaton;
 import common.TestRunner;
+import UserInterface.ThemeManager;
 import org.apache.batik.anim.dom.SAXSVGDocumentFactory;
 import org.apache.batik.swing.JSVGCanvas;
 import org.apache.batik.util.XMLResourceDescriptor;
@@ -28,12 +31,18 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
     protected JTextArea textArea;
     protected JScrollPane scrollPane;
     protected JTextArea warningField;
+    protected JPanel warningPanel;
+    protected JLabel warningLabel;
+    protected JScrollPane warningScrollPane;
     protected File file;
     protected MainPanel mainPanel;
     protected Automaton automaton;
     protected UndoManager undoManager;
     protected JButton settingsButton;
     protected TestSettingsPopup settingsPopup;
+    protected JToggleButton canvasModeToggle;
+    protected CanvasPanel canvasPanel;
+    protected boolean canvasModeActive = false;
 
     // Inline testing components
     protected JPanel inlineTestPanel;
@@ -79,6 +88,8 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
         createGraphPanel();
         createWarningPanel();
         assembleLayout();
+        ThemeManager.addListener(this::applyTheme);
+        applyTheme();
     }
 
     /**
@@ -102,7 +113,6 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
         topPanel = new JPanel();
         topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.X_AXIS));
         topPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        topPanel.setBackground(Color.WHITE);
 
         // Tab label on the left
         JLabel tabLabel = new JLabel(getTabLabelText());
@@ -132,6 +142,12 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
         clearGraphButton.setToolTipText("Clear the current graph visualization (Ctrl+G)");
         clearGraphButton.addActionListener(e -> clearGraph());
 
+        canvasModeToggle = new JToggleButton("Canvas mode");
+        canvasModeToggle.setPreferredSize(new Dimension(110, 30));
+        canvasModeToggle.setMaximumSize(new Dimension(110, 30));
+        canvasModeToggle.setToolTipText("Toggle interactive canvas with anchors and arrows");
+        canvasModeToggle.addActionListener(e -> switchCanvasMode(canvasModeToggle.isSelected()));
+
         // Assemble the panel: [Label] ─────── [⚙] [▶ Run] [Clear]
         topPanel.add(tabLabel);
         topPanel.add(Box.createHorizontalGlue());
@@ -140,6 +156,8 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
         topPanel.add(runButton);
         topPanel.add(Box.createHorizontalStrut(5));
         topPanel.add(clearGraphButton);
+        topPanel.add(Box.createHorizontalStrut(5));
+        topPanel.add(canvasModeToggle);
     }
 
     /**
@@ -159,7 +177,6 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
         inlineTestPanel = new JPanel();
         inlineTestPanel.setLayout(new BoxLayout(inlineTestPanel, BoxLayout.X_AXIS));
         inlineTestPanel.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 20));
-        inlineTestPanel.setBackground(new Color(245, 245, 245));
         
         // Create components
         JLabel testLabel = new JLabel("Quick Test: ");
@@ -375,35 +392,40 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
     private void createGraphPanel() {
         graphPanel = new JPanel();
         graphPanel.setLayout(new BorderLayout());
-        // Remove fixed size to allow dynamic resizing
-        graphPanel.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createTitledBorder("Graph Visualization"),
-            BorderFactory.createEmptyBorder(20, 20, 20, 20)
-        ));
-        graphPanel.setBackground(Color.WHITE);
+        graphPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        canvasPanel = new CanvasPanel(automaton.getType());
+        canvasPanel.setDefinitionChangeListener(def -> {
+            if (def == null) {
+                return;
+            }
+            String current = textArea.getText();
+            if (!def.equals(current)) {
+                textArea.setText(def);
+            }
+        });
     }
 
     /**
      * Create the warning/messages panel
      */
     private void createWarningPanel() {
-        JPanel warningPanel = new JPanel();
+        warningPanel = new JPanel();
         warningPanel.setLayout(new BorderLayout());
         warningPanel.setPreferredSize(new Dimension(300, 100));
         warningPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        JLabel warningLabel = new JLabel("Warnings and Messages:");
+        warningLabel = new JLabel("Warnings and Messages:");
         warningLabel.setFont(new Font("Arial", Font.BOLD, 12));
         warningLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
         
         warningField = new JTextArea("Warnings will be displayed here after using 'Compile with Figure' or 'Run' from the main Actions menu");
         warningField.setEditable(false);
-        warningField.setBackground(new Color(255, 255, 255));
         warningField.setLineWrap(true);
         warningField.setWrapStyleWord(true);
         warningField.setBorder(BorderFactory.createLoweredBevelBorder());
         
-        JScrollPane warningScrollPane = new JScrollPane(warningField);
+        warningScrollPane = new JScrollPane(warningField);
         warningScrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         warningScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
@@ -484,6 +506,28 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
         this.add(splitPane, BorderLayout.CENTER);
     }
 
+    private void switchCanvasMode(boolean enable) {
+        canvasModeActive = enable;
+        if (canvasModeToggle != null && canvasModeToggle.isSelected() != enable) {
+            canvasModeToggle.setSelected(enable);
+        }
+
+        graphPanel.removeAll();
+        if (enable) {
+            if (canvasPanel != null) {
+                canvasPanel.loadFromText(textArea.getText());
+                graphPanel.add(canvasPanel, BorderLayout.CENTER);
+            }
+        } else {
+            JLabel msg = new JLabel("<html><body style='text-align: center;'>Canvas mode off. Use Compile with Figure for SVG preview.</body></html>");
+            msg.setHorizontalAlignment(JLabel.CENTER);
+            msg.setVerticalAlignment(JLabel.CENTER);
+            graphPanel.add(msg, BorderLayout.CENTER);
+        }
+        graphPanel.revalidate();
+        graphPanel.repaint();
+    }
+
     // AutomatonPanel interface implementations
     @Override
     public void compileWithFigure() {
@@ -496,7 +540,17 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
         final String[] errorText = {""};
 
 
-        // Show loading indicator immediately
+        if (canvasModeActive) {
+            Automaton.ParseResult parseResult = automaton.parse(inputText);
+            updateWarningDisplayWithParseResult(parseResult, inputText);
+            graphPanel.removeAll();
+            graphPanel.add(canvasPanel, BorderLayout.CENTER);
+            graphPanel.revalidate();
+            graphPanel.repaint();
+            return;
+        }
+
+        // Show loading indicator immediately for SVG mode
         showLoadingIndicator();
 
         // Create SwingWorker to handle parsing and GraphViz processing in background
@@ -1359,13 +1413,23 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
      * Clear the current graph visualization from the graph panel
      */
     private void clearGraph() {
+        if (canvasModeActive && canvasPanel != null) {
+            canvasPanel.loadFromText("");
+            textArea.setText("");
+            graphPanel.removeAll();
+            graphPanel.add(canvasPanel, BorderLayout.CENTER);
+            graphPanel.revalidate();
+            graphPanel.repaint();
+            return;
+        }
+
         graphPanel.removeAll();
         JLabel clearMessage = new JLabel("<html><body style='text-align: center;'>" +
                 "<p>Graph cleared. Compile with Figure to generate a new visualization.</p>" +
                 "</body></html>");
         clearMessage.setHorizontalAlignment(JLabel.CENTER);
         clearMessage.setVerticalAlignment(JLabel.CENTER);
-        clearMessage.setForeground(new Color(100, 100, 100));
+        clearMessage.setForeground(ThemeManager.textSecondary());
 
         graphPanel.add(clearMessage, BorderLayout.CENTER);
         graphPanel.revalidate();
@@ -1378,7 +1442,7 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
     private void initializeLoadingComponents() {
         // Create loading panel
         loadingPanel = new JPanel(new BorderLayout());
-        loadingPanel.setBackground(Color.WHITE);
+        loadingPanel.setBackground(ThemeManager.panelBackground());
         
         // Create spinner with custom painting
         loadingSpinner = new JLabel() {
@@ -1401,7 +1465,7 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
                     int alpha = 255 - (i * 30);
                     if (alpha < 50) alpha = 50;
                     
-                    g2d.setColor(new Color(0, 100, 200, alpha));
+                    g2d.setColor(new Color(120, 170, 230, alpha));
                     g2d.fillOval(x - 3, y - 3, 6, 6);
                 }
                 g2d.dispose();
@@ -1414,7 +1478,7 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
         loadingText = new JLabel("Generating visualization...");
         loadingText.setHorizontalAlignment(JLabel.CENTER);
         loadingText.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 14));
-        loadingText.setForeground(new Color(60, 60, 60));
+        loadingText.setForeground(ThemeManager.textPrimary());
         
         // Create spinner animation timer
         spinnerTimer = new Timer(100, new ActionListener() {
@@ -1428,7 +1492,7 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
         // Assemble loading panel
         JPanel centerPanel = new JPanel();
         centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
-        centerPanel.setBackground(Color.WHITE);
+        centerPanel.setBackground(ThemeManager.panelBackground());
         centerPanel.add(Box.createVerticalGlue());
         centerPanel.add(loadingSpinner);
         centerPanel.add(Box.createVerticalStrut(10));
@@ -1460,6 +1524,83 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
     private void hideLoadingIndicator() {
         if (spinnerTimer != null) {
             spinnerTimer.stop();
+        }
+    }
+
+    /**
+     * Apply the global theme to this automaton panel and its child components.
+     */
+    public void applyTheme() {
+        Color panelBg = ThemeManager.panelBackground();
+        Color bg = ThemeManager.background();
+        Color text = ThemeManager.textPrimary();
+        Color accent = ThemeManager.accent(false);
+        Color accentHover = ThemeManager.accent(true);
+
+        setBackground(panelBg);
+        applyThemeRecursive(this, panelBg, bg, text, accent, accentHover);
+
+        if (textArea != null) {
+            textArea.setBackground(bg);
+            textArea.setForeground(text);
+            textArea.setCaretColor(accent);
+            textArea.setSelectionColor(accentHover);
+        }
+        if (scrollPane != null && scrollPane.getViewport() != null) {
+            scrollPane.getViewport().setBackground(bg);
+        }
+        if (graphPanel != null) {
+            graphPanel.setBackground(panelBg);
+            graphPanel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createTitledBorder(
+                    BorderFactory.createLineBorder(ThemeManager.borderColor()),
+                    "Graph Visualization",
+                    TitledBorder.DEFAULT_JUSTIFICATION,
+                    TitledBorder.DEFAULT_POSITION,
+                    null,
+                    text
+                ),
+                BorderFactory.createEmptyBorder(20, 20, 20, 20)
+            ));
+        }
+        if (warningPanel != null) {
+            warningPanel.setBackground(panelBg);
+        }
+        if (warningLabel != null) {
+            warningLabel.setForeground(text);
+        }
+        if (warningField != null) {
+            warningField.setBackground(bg);
+            warningField.setForeground(text);
+            warningField.setCaretColor(accent);
+            warningField.setSelectionColor(accentHover);
+        }
+        if (warningScrollPane != null && warningScrollPane.getViewport() != null) {
+            warningScrollPane.getViewport().setBackground(bg);
+        }
+    }
+
+    private void applyThemeRecursive(Component comp, Color panelBg, Color bg, Color text, Color accent, Color accentHover) {
+        if (comp instanceof JPanel) {
+            comp.setBackground(panelBg);
+        } else if (comp instanceof JTextArea || comp instanceof JTextField) {
+            comp.setBackground(bg);
+            comp.setForeground(text);
+            if (comp instanceof JTextComponent) {
+                ((JTextComponent) comp).setCaretColor(accent);
+                ((JTextComponent) comp).setSelectionColor(accentHover);
+            }
+        } else if (comp instanceof JLabel) {
+            ((JLabel) comp).setForeground(text);
+        } else if (comp instanceof AbstractButton) {
+            comp.setBackground(accent);
+            ((AbstractButton) comp).setForeground(Color.WHITE);
+        }
+
+        if (comp instanceof Container) {
+            for (Component child : ((Container) comp).getComponents()) {
+                applyThemeRecursive(child, panelBg, bg, text, accent, accentHover);
+            }
         }
     }
 }
