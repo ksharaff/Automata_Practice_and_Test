@@ -7,7 +7,6 @@ import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.Insets;
 import java.io.File;
 import java.util.ArrayList;
 
@@ -241,12 +240,15 @@ public class MainPanel extends JPanel {
      * Creates and configures a button for a recent file
      */
     private void addRecentFileButton(File file) {
-        JButton fileButton = new JButton(file.getName());
-        fileButton.setMaximumSize(new Dimension(280, 40));
+        ModernButton fileButton = new ModernButton(file.getName());
+        fileButton.setMaximumSize(new Dimension(280, ThemeManager.BUTTON_HEIGHT + 4));
+        fileButton.setPreferredSize(new Dimension(280, ThemeManager.BUTTON_HEIGHT + 4));
         fileButton.setAlignmentX(Component.LEFT_ALIGNMENT);
+        fileButton.setBorderRadius(ThemeManager.RADIUS_SM);
         
         String extension = file.getName().substring(file.getName().lastIndexOf("."));
-        fileButton.setBackground(fileManager.getColorForExtension(extension));
+        Color fileColor = fileManager.getColorForExtension(extension);
+        fileButton.setCustomBackground(fileColor);
         
         fileButton.addActionListener(e -> fileManager.openFile(file));
         
@@ -265,7 +267,7 @@ public class MainPanel extends JPanel {
         fileButton.setComponentPopupMenu(contextMenu);
         
         recentFilesPanel.add(fileButton);
-        recentFilesPanel.add(Box.createVerticalStrut(5));
+        recentFilesPanel.add(Box.createVerticalStrut(ThemeManager.SPACING_S));
     }
     
     /**
@@ -312,7 +314,7 @@ public class MainPanel extends JPanel {
 
     private JLabel createRecentFilesHeaderLabel() {
         JLabel label = new JLabel("Recent Files");
-        label.setFont(new Font("Arial", Font.BOLD, 16));
+        label.setFont(ThemeManager.getFont("SUBHEAD", Font.BOLD));
         label.setForeground(ThemeManager.textPrimary());
         return label;
     }
@@ -325,7 +327,8 @@ public class MainPanel extends JPanel {
             recentFilesPanel.setBackground(panelBg);
             recentFilesPanel.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 0, 1, border),
-                BorderFactory.createEmptyBorder(20, 20, 20, 20)
+                BorderFactory.createEmptyBorder(ThemeManager.SPACING_L, ThemeManager.SPACING_L, 
+                                               ThemeManager.SPACING_L, ThemeManager.SPACING_L)
             ));
         }
         if (centerPanel != null) {
@@ -370,32 +373,48 @@ public class MainPanel extends JPanel {
         JPanel contentPanel = new JPanel();
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
         contentPanel.setBackground(ThemeManager.panelBackground());
+        contentPanel.setBorder(BorderFactory.createEmptyBorder(
+            ThemeManager.SPACING_XL, ThemeManager.SPACING_XL, 
+            ThemeManager.SPACING_XL, ThemeManager.SPACING_XL
+        ));
         
         JLabel titleLabel = new JLabel("Welcome to CS.410 Graph System");
-        titleLabel.setFont(new Font("Arial", Font.BOLD, 28));
+        titleLabel.setFont(ThemeManager.getFont("LARGE_HEADING", Font.BOLD));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         titleLabel.setForeground(ThemeManager.textPrimary());
-        titleLabel.setBorder(BorderFactory.createEmptyBorder(50, 0, 20, 0));
+        titleLabel.setBorder(BorderFactory.createEmptyBorder(
+            ThemeManager.SPACING_XL, 0, ThemeManager.SPACING_M, 0
+        ));
         
         JLabel subtitleLabel = new JLabel("Choose an option to get started");
-        subtitleLabel.setFont(new Font("Arial", Font.PLAIN, 18));
+        subtitleLabel.setFont(ThemeManager.getFont("SUBHEAD", Font.PLAIN));
         subtitleLabel.setForeground(ThemeManager.textSecondary());
         subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        subtitleLabel.setBorder(BorderFactory.createEmptyBorder(0, 0, 30, 0));
+        subtitleLabel.setBorder(BorderFactory.createEmptyBorder(
+            0, 0, ThemeManager.SPACING_XL, 0
+        ));
         
         JPanel buttonsPanel = new JPanel();
         buttonsPanel.setLayout(new BoxLayout(buttonsPanel, BoxLayout.Y_AXIS));
         buttonsPanel.setBackground(ThemeManager.panelBackground());
         buttonsPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
         
-        JButton newFileButton = createStyledButton("Create New File", Color.darkGray);
+        ModernButton newFileButton = new ModernButton("Create New File", true);
+        newFileButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        newFileButton.setMaximumSize(new Dimension(250, ThemeManager.BUTTON_HEIGHT + 8));
+        newFileButton.setPreferredSize(new Dimension(250, ThemeManager.BUTTON_HEIGHT + 8));
+        newFileButton.setBorderRadius(ThemeManager.RADIUS_MD);
         newFileButton.addActionListener(e -> showNewAutomatonMenu(newFileButton));
         
-        JButton openFileButton = createStyledButton("Open From Computer", Color.darkGray);
+        ModernButton openFileButton = new ModernButton("Open From Computer", false);
+        openFileButton.setAlignmentX(Component.CENTER_ALIGNMENT);
+        openFileButton.setMaximumSize(new Dimension(250, ThemeManager.BUTTON_HEIGHT + 8));
+        openFileButton.setPreferredSize(new Dimension(250, ThemeManager.BUTTON_HEIGHT + 8));
+        openFileButton.setBorderRadius(ThemeManager.RADIUS_MD);
         openFileButton.addActionListener(e -> fileManager.showOpenDialog());
         
         buttonsPanel.add(newFileButton);
-        buttonsPanel.add(Box.createVerticalStrut(15));
+        buttonsPanel.add(Box.createVerticalStrut(ThemeManager.SPACING_M));
         buttonsPanel.add(openFileButton);
         
         contentPanel.add(titleLabel);
@@ -406,35 +425,6 @@ public class MainPanel extends JPanel {
         welcomePanel.add(contentPanel, BorderLayout.CENTER);
         
         return welcomePanel;
-    }
-    
-    private JButton createStyledButton(String text, Color backgroundColor) {
-        JButton button = new JButton(text);
-        backgroundColor = ThemeManager.accent(false);
-        button.setFont(new Font("Arial", Font.BOLD, 14));
-        button.setForeground(Color.WHITE);
-        button.setBackground(backgroundColor);
-        button.setOpaque(true); // Required for Mac to show background color
-        button.setBorder(BorderFactory.createEmptyBorder(12, 25, 12, 25));
-        button.setFocusPainted(false);
-        button.setAlignmentX(Component.CENTER_ALIGNMENT);
-        button.setMaximumSize(new Dimension(250, 45));
-        button.setPreferredSize(new Dimension(250, 45));
-        
-        // Add hover effect
-        button.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseEntered(java.awt.event.MouseEvent evt) {
-                button.setBackground(ThemeManager.accent(true));
-            }
-            
-            @Override
-            public void mouseExited(java.awt.event.MouseEvent evt) {
-                button.setBackground(ThemeManager.accent(false));
-            }
-        });
-        
-        return button;
     }
     
     private void showNewAutomatonMenu(JButton parentButton) {
@@ -489,7 +479,8 @@ public class MainPanel extends JPanel {
         recentFilesPanel.setBackground(ThemeManager.panelBackground());
         recentFilesPanel.setBorder(BorderFactory.createCompoundBorder(
             BorderFactory.createMatteBorder(0, 0, 0, 1, ThemeManager.borderColor()),
-            BorderFactory.createEmptyBorder(20, 20, 20, 20)
+            BorderFactory.createEmptyBorder(ThemeManager.SPACING_L, ThemeManager.SPACING_L, 
+                                           ThemeManager.SPACING_L, ThemeManager.SPACING_L)
         ));
         
         // Create center panel with tab system and object panel
@@ -506,7 +497,10 @@ public class MainPanel extends JPanel {
         objectPanel = new JPanel(); 
         objectPanel.setLayout(new BorderLayout());
         objectPanel.setBackground(ThemeManager.panelBackground());
-        objectPanel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        objectPanel.setBorder(BorderFactory.createEmptyBorder(
+            ThemeManager.SPACING_M, ThemeManager.SPACING_L, 
+            ThemeManager.SPACING_M, ThemeManager.SPACING_L
+        ));
 
         welcomePanel = createWelcomePanel();
         objectPanel.add(welcomePanel, BorderLayout.CENTER);
@@ -516,7 +510,7 @@ public class MainPanel extends JPanel {
         // Recent Files header
         recentFilesLabel = createRecentFilesHeaderLabel();
         recentFilesPanel.add(recentFilesLabel);
-        recentFilesPanel.add(Box.createVerticalStrut(10));
+        recentFilesPanel.add(Box.createVerticalStrut(ThemeManager.SPACING_S));
 
         // Load existing recent files
         loadRecentFilesButtons();
@@ -584,15 +578,15 @@ public class MainPanel extends JPanel {
      */
     private void createTabPanel() {
         tabPanel = new JPanel(new BorderLayout());
-        tabPanel.setBackground(new Color(248, 248, 248));
+        tabPanel.setBackground(ThemeManager.panelBackground());
         tabPanel.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(220, 220, 220)),
-            BorderFactory.createEmptyBorder(4, 8, 0, 8)
+            BorderFactory.createMatteBorder(0, 0, 1, 0, ThemeManager.borderColor()),
+            BorderFactory.createEmptyBorder(ThemeManager.SPACING_XS, ThemeManager.SPACING_M, 0, ThemeManager.SPACING_M)
         ));
-        tabPanel.setPreferredSize(new Dimension(0, 42));
+        tabPanel.setPreferredSize(new Dimension(0, ThemeManager.TAB_HEIGHT + ThemeManager.SPACING_XS));
         
-        tabButtonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 8));
-        tabButtonsPanel.setBackground(new Color(248, 248, 248));
+        tabButtonsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, ThemeManager.SPACING_XS, ThemeManager.SPACING_XS));
+        tabButtonsPanel.setBackground(ThemeManager.panelBackground());
         
         tabPanel.add(tabButtonsPanel, BorderLayout.WEST);
         
@@ -612,101 +606,19 @@ public class MainPanel extends JPanel {
         }
         
         tabPanel.setVisible(true);
-        Color activeBg = ThemeManager.background();
-        Color inactiveBg = ThemeManager.panelBackground();
-        Color text = ThemeManager.textPrimary();
-        Color textSub = ThemeManager.textSecondary();
-        Color border = ThemeManager.borderColor();
-        Color hover = ThemeManager.accent(true);
+        tabPanel.setBackground(ThemeManager.panelBackground());
+        tabButtonsPanel.setBackground(ThemeManager.panelBackground());
         
         for (int i = 0; i < openTabs.size(); i++) {
             AutomatonTab tab = openTabs.get(i);
             final int tabIndex = i;
+            boolean isActive = (i == activeTabIndex);
             
-            JPanel tabButtonPanel = new JPanel(new BorderLayout());
-            tabButtonPanel.setOpaque(false);
+            ModernTabButton tabButton = new ModernTabButton(tab.getDisplayTitle(), tabIndex, isActive);
+            tabButton.setOnSelectAction(() -> switchToTab(tabIndex));
+            tabButton.setOnCloseAction(() -> closeTab(tabIndex));
             
-            JButton tabButton = new JButton(tab.getDisplayTitle());
-            tabButton.setFont(new Font("Arial", Font.PLAIN, 12));
-            tabButton.setBorderPainted(false);
-            tabButton.setFocusPainted(false);
-            tabButton.setMargin(new Insets(6, 12, 6, 12));
-            
-            // Subtle tab styling
-            if (i == activeTabIndex) {
-                tabButton.setBackground(activeBg);
-                tabButton.setForeground(text);
-                tabButton.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createMatteBorder(1, 1, 0, 1, border),
-                    BorderFactory.createEmptyBorder(4, 8, 4, 8)
-                ));
-                tabButton.setOpaque(true);
-            } else {
-                tabButton.setBackground(inactiveBg);
-                tabButton.setForeground(textSub);
-                tabButton.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createMatteBorder(1, 1, 1, 1, border),
-                    BorderFactory.createEmptyBorder(4, 8, 4, 8)
-                ));
-                tabButton.setOpaque(true);
-            }
-            
-            // Add hover effect for inactive tabs
-            if (i != activeTabIndex) {
-                tabButton.addMouseListener(new java.awt.event.MouseAdapter() {
-                    @Override
-                    public void mouseEntered(java.awt.event.MouseEvent evt) {
-                        if (tabIndex != activeTabIndex) {
-                            tabButton.setBackground(hover);
-                        }
-                    }
-                    
-                    @Override
-                    public void mouseExited(java.awt.event.MouseEvent evt) {
-                        if (tabIndex != activeTabIndex) {
-                            tabButton.setBackground(inactiveBg);
-                        }
-                    }
-                });
-            }
-            
-            tabButton.addActionListener(e -> switchToTab(tabIndex));
-            
-            // Enhanced close button
-            JButton closeButton = new JButton("×");
-            closeButton.setFont(new Font("Arial", Font.BOLD, 14));
-            closeButton.setForeground(textSub);
-            closeButton.setBorderPainted(false);
-            closeButton.setFocusPainted(false);
-            closeButton.setContentAreaFilled(false);
-            closeButton.setMargin(new Insets(0, 4, 0, 4));
-            closeButton.setPreferredSize(new Dimension(20, 20));
-            closeButton.setToolTipText("Close tab");
-            
-            closeButton.addActionListener(e -> closeTab(tabIndex));
-            
-            // Enhanced hover effect for close button
-            closeButton.addMouseListener(new java.awt.event.MouseAdapter() {
-                @Override
-                public void mouseEntered(java.awt.event.MouseEvent evt) {
-                    closeButton.setForeground(new Color(150, 80, 80));
-                    closeButton.setBackground(new Color(250, 245, 245));
-                    closeButton.setContentAreaFilled(true);
-                    closeButton.setBorder(BorderFactory.createRaisedBevelBorder());
-                }
-                
-                @Override
-                public void mouseExited(java.awt.event.MouseEvent evt) {
-                    closeButton.setForeground(ThemeManager.accent(true));
-                    closeButton.setBackground(ThemeManager.background());
-                    closeButton.setBorderPainted(false);
-                }
-            });
-            
-            tabButtonPanel.add(tabButton, BorderLayout.CENTER);
-            tabButtonPanel.add(closeButton, BorderLayout.EAST);
-                    closeButton.setForeground(textSub);
-            tabButtonsPanel.add(tabButtonPanel);
+            tabButtonsPanel.add(tabButton);
         }
         
         tabButtonsPanel.revalidate();

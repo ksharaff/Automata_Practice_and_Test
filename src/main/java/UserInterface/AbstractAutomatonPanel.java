@@ -38,7 +38,7 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
     protected MainPanel mainPanel;
     protected Automaton automaton;
     protected UndoManager undoManager;
-    protected JButton settingsButton;
+    protected ModernButton settingsButton;
     protected TestSettingsPopup settingsPopup;
     protected JToggleButton canvasModeToggle;
     protected CanvasPanel canvasPanel;
@@ -48,8 +48,8 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
     protected JPanel inlineTestPanel;
     protected JTextField inlineTestInput;
     protected JLabel inlineTestResult;
-    protected JButton inlineTestButton;
-    protected JButton clearGraphButton;
+    protected ModernButton inlineTestButton;
+    protected ModernButton clearGraphButton;
     // Loading indicator components
     private JPanel loadingPanel;
     private JLabel loadingSpinner;
@@ -112,51 +112,57 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
     private void createTopPanel() {
         topPanel = new JPanel();
         topPanel.setLayout(new BoxLayout(topPanel, BoxLayout.X_AXIS));
-        topPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        topPanel.setBorder(BorderFactory.createEmptyBorder(
+            ThemeManager.SPACING_M, ThemeManager.SPACING_M, 
+            ThemeManager.SPACING_M, ThemeManager.SPACING_M
+        ));
 
         // Tab label on the left
         JLabel tabLabel = new JLabel(getTabLabelText());
-        tabLabel.setFont(new Font("Arial", Font.BOLD, 14));
-        tabLabel.setForeground(new Color(102, 133, 102));
+        tabLabel.setFont(ThemeManager.getFont("SUBHEAD", Font.BOLD));
+        tabLabel.setForeground(ThemeManager.accentColor("normal"));
 
-        // Settings button (gear icon)
-        settingsButton = new JButton("\u2699");
+        // Settings button (gear icon) - using ModernButton
+        settingsButton = new ModernButton("\u2699");
+        settingsButton.setPreferredSize(new Dimension(ThemeManager.BUTTON_HEIGHT, ThemeManager.BUTTON_HEIGHT));
+        settingsButton.setMaximumSize(new Dimension(ThemeManager.BUTTON_HEIGHT, ThemeManager.BUTTON_HEIGHT));
         settingsButton.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 16));
-        settingsButton.setPreferredSize(new Dimension(40, 30));
-        settingsButton.setMaximumSize(new Dimension(40, 30));
         settingsButton.setToolTipText("Test Settings");
-        settingsButton.setFocusPainted(false);
+        settingsButton.setBorderRadius(ThemeManager.RADIUS_SM);
         settingsButton.addActionListener(e -> showSettingsPopup());
 
-        // Run button
-        JButton runButton = new JButton("\u25B6 Run");
-        runButton.setPreferredSize(new Dimension(80, 30));
-        runButton.setMaximumSize(new Dimension(80, 30));
+        // Run button - using ModernButton
+        ModernButton runButton = new ModernButton("\u25B6 Run", true);
+        runButton.setPreferredSize(new Dimension(85, ThemeManager.BUTTON_HEIGHT));
+        runButton.setMaximumSize(new Dimension(85, ThemeManager.BUTTON_HEIGHT));
         runButton.setToolTipText("Run test file");
+        runButton.setBorderRadius(ThemeManager.RADIUS_SM);
         runButton.addActionListener(e -> runTestFile());
 
-        // Clear Graph button
-        clearGraphButton = new JButton("Clear");
-        clearGraphButton.setPreferredSize(new Dimension(80, 30));
-        clearGraphButton.setMaximumSize(new Dimension(80, 30));
+        // Clear Graph button - using ModernButton
+        clearGraphButton = new ModernButton("Clear");
+        clearGraphButton.setPreferredSize(new Dimension(75, ThemeManager.BUTTON_HEIGHT));
+        clearGraphButton.setMaximumSize(new Dimension(75, ThemeManager.BUTTON_HEIGHT));
         clearGraphButton.setToolTipText("Clear the current graph visualization (Ctrl+G)");
+        clearGraphButton.setBorderRadius(ThemeManager.RADIUS_SM);
         clearGraphButton.addActionListener(e -> clearGraph());
 
         canvasModeToggle = new JToggleButton("Canvas mode");
-        canvasModeToggle.setPreferredSize(new Dimension(110, 30));
-        canvasModeToggle.setMaximumSize(new Dimension(110, 30));
+        canvasModeToggle.setPreferredSize(new Dimension(140, ThemeManager.BUTTON_HEIGHT));
+        canvasModeToggle.setMaximumSize(new Dimension(140, ThemeManager.BUTTON_HEIGHT));
         canvasModeToggle.setToolTipText("Toggle interactive canvas with anchors and arrows");
+        canvasModeToggle.setFont(ThemeManager.getFont("BODY", Font.PLAIN));
         canvasModeToggle.addActionListener(e -> switchCanvasMode(canvasModeToggle.isSelected()));
 
-        // Assemble the panel: [Label] ─────── [⚙] [▶ Run] [Clear]
+        // Assemble the panel: [Label] ─────── [⚙] [▶ Run] [Clear] [Canvas mode]
         topPanel.add(tabLabel);
         topPanel.add(Box.createHorizontalGlue());
         topPanel.add(settingsButton);
-        topPanel.add(Box.createHorizontalStrut(10));
+        topPanel.add(Box.createHorizontalStrut(ThemeManager.SPACING_S));
         topPanel.add(runButton);
-        topPanel.add(Box.createHorizontalStrut(5));
+        topPanel.add(Box.createHorizontalStrut(ThemeManager.SPACING_S));
         topPanel.add(clearGraphButton);
-        topPanel.add(Box.createHorizontalStrut(5));
+        topPanel.add(Box.createHorizontalStrut(ThemeManager.SPACING_S));
         topPanel.add(canvasModeToggle);
     }
 
@@ -176,23 +182,29 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
     private void createInlineTestPanel() {
         inlineTestPanel = new JPanel();
         inlineTestPanel.setLayout(new BoxLayout(inlineTestPanel, BoxLayout.X_AXIS));
-        inlineTestPanel.setBorder(BorderFactory.createEmptyBorder(5, 20, 5, 20));
+        inlineTestPanel.setBorder(BorderFactory.createEmptyBorder(
+            ThemeManager.SPACING_S, ThemeManager.SPACING_L, 
+            ThemeManager.SPACING_S, ThemeManager.SPACING_L
+        ));
         
         // Create components
         JLabel testLabel = new JLabel("Quick Test: ");
-        testLabel.setFont(new Font("Arial", Font.BOLD, 12));
+        testLabel.setFont(ThemeManager.getFont("BODY", Font.BOLD));
         
         inlineTestInput = new JTextField();
-        inlineTestInput.setMaximumSize(new Dimension(300, 30));
-        inlineTestInput.setPreferredSize(new Dimension(200, 30));
+        inlineTestInput.setMaximumSize(new Dimension(300, ThemeManager.BUTTON_HEIGHT));
+        inlineTestInput.setPreferredSize(new Dimension(200, ThemeManager.BUTTON_HEIGHT));
         inlineTestInput.setToolTipText("Enter input string to test (empty for epsilon)");
         
-        inlineTestButton = new JButton("Test");
-        inlineTestButton.setPreferredSize(new Dimension(70, 30));
+        inlineTestButton = new ModernButton("Test", true);
+        inlineTestButton.setPreferredSize(new Dimension(70, ThemeManager.BUTTON_HEIGHT));
+        inlineTestButton.setBorderRadius(ThemeManager.RADIUS_SM);
         
         inlineTestResult = new JLabel("");
-        inlineTestResult.setFont(new Font("Arial", Font.BOLD, 12));
-        inlineTestResult.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 0));
+        inlineTestResult.setFont(ThemeManager.getFont("BODY", Font.BOLD));
+        inlineTestResult.setBorder(BorderFactory.createEmptyBorder(
+            0, ThemeManager.SPACING_M, 0, 0
+        ));
         
         // Add action listener for test button
         inlineTestButton.addActionListener(e -> runInlineTest());
@@ -268,7 +280,10 @@ public abstract class AbstractAutomatonPanel extends JPanel implements Automaton
         textEditorPanel = new JPanel();
         textEditorPanel.setLayout(new BorderLayout());
         textEditorPanel.setPreferredSize(new Dimension(300, 300));
-        textEditorPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        textEditorPanel.setBorder(BorderFactory.createEmptyBorder(
+            ThemeManager.SPACING_L, ThemeManager.SPACING_L, 
+            ThemeManager.SPACING_L, ThemeManager.SPACING_L
+        ));
 
         textArea = new JTextArea();
         scrollPane = new JScrollPane(textArea);

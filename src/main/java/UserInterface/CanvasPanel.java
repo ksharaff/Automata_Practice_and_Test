@@ -2,6 +2,7 @@ package UserInterface;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -34,10 +35,10 @@ import common.Automaton;
  * This is intentionally self-contained so it can sit alongside the existing GraphViz preview.
  */
 public class CanvasPanel extends JPanel {
-    private static final int STATE_RADIUS = 35;
-    private static final int ANCHOR_SIZE = 10;
+    private static final int STATE_RADIUS = 40;  // Increased from 35 for better visibility
+    private static final int ANCHOR_SIZE = 12;   // Increased from 10 for better clickability (MIN_CLICK_TARGET)
     private static final int GRID_SPACING = 120;
-    private static final double ANCHOR_HIT_TOLERANCE = 2.3;
+    private static final double ANCHOR_HIT_TOLERANCE = 1.8;  // Adjusted for larger anchors
 
     private final List<CanvasState> states = new ArrayList<>();
     private final List<CanvasTransition> transitions = new ArrayList<>();
@@ -50,6 +51,10 @@ public class CanvasPanel extends JPanel {
 
     private AnchorPoint pendingAnchor;
     private Point dragLinePoint;
+    
+    // Hover state tracking for visual feedback
+    private CanvasState hoveredState;
+    private AnchorPoint hoveredAnchor;
 
     private int stateCounter = 0;
     private Point addButtonPos;
@@ -171,11 +176,29 @@ public class CanvasPanel extends JPanel {
     private void drawState(Graphics2D g2, CanvasState s) {
         Point p = s.position;
         int r = STATE_RADIUS;
-        g2.setColor(stateFillColor());
+        
+        boolean isHovered = (s == hoveredState) || (s == draggingState);
+        
+        // Draw subtle drop shadow
+        if (!isHovered) {
+            g2.setColor(new Color(0, 0, 0, 25));
+            g2.fillOval(p.x - r + 2, p.y - r + 3, 2 * r, 2 * r);
+        }
+        
+        // State fill
+        Color fillColor = stateFillColor();
+        if (isHovered) {
+            // Slightly brighter when hovered
+            fillColor = ThemeManager.blend(fillColor, Color.WHITE, 0.15f);
+        }
+        g2.setColor(fillColor);
         g2.fillOval(p.x - r, p.y - r, 2 * r, 2 * r);
+        
+        // State stroke
         g2.setColor(stateStrokeColor());
-        g2.setStroke(new BasicStroke(2f));
+        g2.setStroke(new BasicStroke(isHovered ? 2.5f : 2f));
         g2.drawOval(p.x - r, p.y - r, 2 * r, 2 * r);
+        
         if (s.isFinal) {
             g2.drawOval(p.x - r + 5, p.y - r + 5, 2 * r - 10, 2 * r - 10);
         }
@@ -185,17 +208,30 @@ public class CanvasPanel extends JPanel {
             g2.setColor(stateStrokeColor());
             drawArrow(g2, new Point(arrowX, arrowY), new Point(p.x - r, p.y), 0);
         }
-        // Label
+        // Label with larger font
+        Font stateFont = new Font("Arial", Font.BOLD, 16); // Increase font size here
+        g2.setFont(stateFont);
         FontMetrics fm = g2.getFontMetrics();
         int textWidth = fm.stringWidth(s.name);
         g2.setColor(textColor());
         g2.drawString(s.name, p.x - textWidth / 2, p.y + fm.getAscent() / 2);
 
-        // Anchors
-        g2.setColor(anchorColor());
+        // Anchors - draw with hover effect
         for (Anchor anchor : Anchor.values()) {
             Point ap = anchorPosition(s, anchor);
-            g2.fillOval(ap.x - ANCHOR_SIZE / 2, ap.y - ANCHOR_SIZE / 2, ANCHOR_SIZE, ANCHOR_SIZE);
+            AnchorPoint currentAnchor = new AnchorPoint(s, anchor);
+            boolean anchorHovered = currentAnchor.equals(hoveredAnchor);
+            
+            // Draw anchor with hover scaling
+            int anchorSize = anchorHovered ? (int)(ANCHOR_SIZE * 1.2) : ANCHOR_SIZE;
+            Color anchorCol = anchorHovered ? ThemeManager.accentColor("hover") : anchorColor();
+            
+            // Subtle shadow for anchors
+            g2.setColor(new Color(0, 0, 0, 30));
+            g2.fillOval(ap.x - anchorSize / 2 + 1, ap.y - anchorSize / 2 + 1, anchorSize, anchorSize);
+            
+            g2.setColor(anchorCol);
+            g2.fillOval(ap.x - anchorSize / 2, ap.y - anchorSize / 2, anchorSize, anchorSize);
         }
     }
 
@@ -207,7 +243,7 @@ public class CanvasPanel extends JPanel {
             // Self-loop: tighter top loop with arrow driven inward
             int spread = STATE_RADIUS / 2 - 2 + t.offsetIndex * 4;
             int lift = STATE_RADIUS + 8 + t.offsetIndex * 5;
-            int rimY = from.y - 6; // sit closer to the state outline
+            int rimY = from.y; // sit closer to the state outline
 
             Point start = new Point(from.x - spread, rimY);
             Point ctrl1 = new Point(from.x - spread, rimY - lift);
@@ -225,12 +261,15 @@ public class CanvasPanel extends JPanel {
             g2.setStroke(new BasicStroke(2.2f));
             g2.draw(loop);
 
-            // Arrow sits on the right leg, angled inward toward the state center
-            Point arrowBase = pointOnCubic(loop, 0.83);
-            Point rawTip = pointOnCubic(loop, 0.94);
-            Point arrowTip = new Point(rawTip.x - 4, rawTip.y + 14); // drive tip inward and downward toward center
-            double arrowAngle = Math.atan2(arrowTip.y - arrowBase.y, arrowTip.x - arrowBase.x);
-            drawArrow(g2, arrowBase, arrowTip, arrowAngle);
+            // Arrow sits on the right leg, following the curve's tangent
+            double arrowT = 1.0; // Position along curve for arrow (closer to end)
+            Point arrowTip = pointOnCubic(loop, arrowT);
+            
+            // Calculate tangent at this point for proper arrow angle
+            double tangentAngle = getTangentAngleCubic(loop, arrowT);
+            
+            // Draw arrow at the tip following the tangent
+            drawArrow(g2, null, arrowTip, tangentAngle);
 
             // Label above the loop apex
             Point labelPos = new Point(from.x, rimY - lift + 8);
@@ -273,13 +312,15 @@ public class CanvasPanel extends JPanel {
 
     private void drawTransitionLabel(Graphics2D g2, CanvasTransition t, Point pos) {
         String text = String.join(",", t.labels);
+        
+        // Use larger font for transition labels
+        Font labelFont = new Font("Arial", Font.BOLD, 20);
+        g2.setFont(labelFont);
+        
         FontMetrics fm = g2.getFontMetrics();
         int w = fm.stringWidth(text);
-        int h = fm.getHeight();
-        g2.setColor(labelBgColor());
-        g2.fillRoundRect(pos.x - w / 2 - 4, pos.y - h + 2, w + 8, h, 8, 8);
-        g2.setColor(labelBorderColor());
-        g2.drawRoundRect(pos.x - w / 2 - 4, pos.y - h + 2, w + 8, h, 8, 8);
+        
+        // Draw text without background box
         g2.setColor(labelTextColor());
         g2.drawString(text, pos.x - w / 2, pos.y);
     }
@@ -313,6 +354,27 @@ public class CanvasPanel extends JPanel {
                  + 3 * u * Math.pow(t, 2) * c.getCtrlY2()
                  + Math.pow(t, 3) * c.getY2();
         return new Point((int) x, (int) y);
+    }
+    
+    /**
+     * Calculate the tangent angle of a cubic Bezier curve at parameter t
+     */
+    private double getTangentAngleCubic(CubicCurve2D c, double t) {
+        // Derivative of cubic Bezier curve
+        double u = 1 - t;
+        double dx = -3 * Math.pow(u, 2) * c.getX1()
+                  + 3 * Math.pow(u, 2) * c.getCtrlX1()
+                  - 6 * u * t * c.getCtrlX1()
+                  - 3 * Math.pow(t, 2) * c.getCtrlX2()
+                  + 6 * u * t * c.getCtrlX2()
+                  + 3 * Math.pow(t, 2) * c.getX2();
+        double dy = -3 * Math.pow(u, 2) * c.getY1()
+                  + 3 * Math.pow(u, 2) * c.getCtrlY1()
+                  - 6 * u * t * c.getCtrlY1()
+                  - 3 * Math.pow(t, 2) * c.getCtrlY2()
+                  + 6 * u * t * c.getCtrlY2()
+                  + 3 * Math.pow(t, 2) * c.getY2();
+        return Math.atan2(dy, dx);
     }
 
     private void applyTheme() {
@@ -459,7 +521,30 @@ public class CanvasPanel extends JPanel {
                 Point p = e.getPoint();
                 boolean wasHover = hoverAddButton;
                 hoverAddButton = addButtonPos != null && isOnAddButton(p);
-                if (wasHover != hoverAddButton) {
+                
+                // Track hovered state and anchor for visual feedback
+                CanvasState prevHoveredState = hoveredState;
+                AnchorPoint prevHoveredAnchor = hoveredAnchor;
+                
+                hoveredState = findStateAt(p);
+                hoveredAnchor = null;
+                
+                if (hoveredState != null) {
+                    Anchor anchor = isOnAnchor(hoveredState, p);
+                    if (anchor != null) {
+                        hoveredAnchor = new AnchorPoint(hoveredState, anchor);
+                        setCursor(new java.awt.Cursor(java.awt.Cursor.CROSSHAIR_CURSOR));
+                    } else {
+                        setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+                    }
+                } else {
+                    setCursor(new java.awt.Cursor(java.awt.Cursor.DEFAULT_CURSOR));
+                }
+                
+                // Repaint if hover state changed
+                if (wasHover != hoverAddButton || 
+                    prevHoveredState != hoveredState || 
+                    !java.util.Objects.equals(prevHoveredAnchor, hoveredAnchor)) {
                     repaint();
                 }
             }
@@ -596,7 +681,8 @@ public class CanvasPanel extends JPanel {
             Point from = anchorPosition(t.from, t.fromAnchor);
             Point to = anchorPosition(t.to, t.toAnchor);
             
-            if (from.equals(to)) {
+            // Check if this is a self-loop (same state, not same position)
+            if (t.from == t.to) {
                 int spread = STATE_RADIUS / 2 - 8 + t.offsetIndex * 4;
                 int lift = STATE_RADIUS + 8 + t.offsetIndex * 5;
                 int rimY = from.y - 6;
@@ -761,6 +847,19 @@ public class CanvasPanel extends JPanel {
         AnchorPoint(CanvasState state, Anchor anchor) {
             this.state = state;
             this.anchor = anchor;
+        }
+        
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (!(obj instanceof AnchorPoint)) return false;
+            AnchorPoint other = (AnchorPoint) obj;
+            return this.state == other.state && this.anchor == other.anchor;
+        }
+        
+        @Override
+        public int hashCode() {
+            return java.util.Objects.hash(state, anchor);
         }
     }
 
